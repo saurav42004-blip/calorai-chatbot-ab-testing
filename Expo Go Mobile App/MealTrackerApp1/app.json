@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "MealTracker",
+    "slug": "meal-tracker-app",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#0F1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.yourname.mealtracker"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F1117"
+      },
+      "package": "com.yourname.mealtracker"
+    },
+    "extra": {
+      "supabaseUrl": "YOUR_SUPABASE_URL",
+      "supabaseAnonKey": "YOUR_SUPABASE_ANON_KEY"
+    }
+  }
+}
