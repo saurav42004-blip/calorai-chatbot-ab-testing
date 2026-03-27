@@ -135,7 +135,7 @@
           "parameters": [
             {
               "name": "STATSIG-API-KEY",
-              "value": "_YOUR_STATSIG_API_KEY_"
+              "value": "secret-zS7Nlm0jZ8jBxIENW8NwnPIChVm2tRGtkkHE8NWXyLK"
             },
             {
               "name": "Content-Type",
@@ -267,7 +267,7 @@
           "parameters": [
             {
               "name": "STATSIG-API-KEY",
-              "value": "_YOUR_STATSIG_API_KEY_"
+              "value": "secret-zS7Nlm0jZ8jBxIENW8NwnPIChVm2tRGtkkHE8NWXyLK"
             },
             {
               "name": "Content-Type",
