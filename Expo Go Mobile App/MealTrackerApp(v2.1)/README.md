@@ -1,10 +1,10 @@
-# 🥗 MealTracker — Expo App (Bonus Task 2)
+# 🥗 MealTracker — Expo App
 
 A React Native app (Expo Go) that syncs in real-time with your n8n Telegram meal-tracking bot via Supabase, **plus push notifications** for daily reminders and daily summaries.
 
 ---
 
-## 🆕 What's New in v2 (Bonus Task 2)
+## 🆕 What's New in v2
 
 | Feature | How it works |
 |---|---|
