@@ -243,7 +243,3 @@ Scan the QR code with the Expo Go app on your device. Make sure `.env` is config
 | **Total** | **~7h 57m** |
 
 ---
-
-## GitHub Repository
-
-[https://github.com/saurav42004-blip/calorai-chatbot-ab-testing](https://github.com/saurav42004-blip/calorai-chatbot-ab-testing)
