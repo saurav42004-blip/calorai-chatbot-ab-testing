@@ -1,0 +1,1494 @@
+{
+  "name": "A/B Test Chatbot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "id": "f8ec786d-52e0-455e-950f-4bd80f0a6b80",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -2688,
+        -1152
+      ],
+      "webhookId": "f77f69f0-0304-490b-a0ff-c3433c2410fe",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "user_id",
+              "value": "={{ $json.message.from.id }}",
+              "type": "number"
+            },
+            {
+              "id": "a2",
+              "name": "username",
+              "value": "={{ $json.message.from.username }}",
+              "type": "string"
+            },
+            {
+              "id": "a3",
+              "name": "first_name",
+              "value": "={{ $json.message.from.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "a4",
+              "name": "text",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "a5",
+              "name": "chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5a2c5e46-8660-4939-821d-6fdbb3d5bc7f",
+      "name": "Extract User",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -2496,
+        -1152
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "={{ `SELECT COUNT(*) AS count FROM users WHERE user_id = ${$json.user_id};` }}",
+        "additionalFields": {}
+      },
+      "id": "fb087db3-f99a-45fc-ae09-a6a63b8701d9",
+      "name": "Check User Exists",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 1,
+      "position": [
+        -2288,
+        -1152
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "aA0h7epgK8WeNgur",
+          "name": "SK Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "id": "2c58f09a-262a-4a9b-90ba-20bd8574dbab",
+      "name": "New User?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -2096,
+        -1152
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://statsigapi.net/v1/initialize",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "STATSIG-API-KEY",
+              "value": "secret-zS7Nlm0jZ8jBxIENW8NwnPIChVm2tRGtkkHE8NWXyLK"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"user\": { \"userID\": String($('Extract User').item.json.user_id) } } }}",
+        "options": {}
+      },
+      "id": "64708385-189e-47f7-8801-d09bc5a0da6c",
+      "name": "Statsig Assign",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1792,
+        -1408
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b1",
+              "name": "group",
+              "value": "={{ Object.values($json.feature_gates)[0].value ? 'test' : 'control' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "41e11950-3914-4446-9e1f-93fed8485401",
+      "name": "Extract Statsig",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1600,
+        -1408
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "users",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "username",
+              "fieldValue": "={{ $('Extract User').item.json.username }}"
+            },
+            {
+              "fieldId": "first_name",
+              "fieldValue": "={{ $('Extract User').item.json.first_name }}"
+            },
+            {
+              "fieldId": "group",
+              "fieldValue": "={{ $('Extract Statsig').item.json.group }}"
+            },
+            {
+              "fieldId": "onboarding_step",
+              "fieldValue": "0"
+            }
+          ]
+        }
+      },
+      "id": "8eb0798a-4d12-43d6-8edc-345878d6d9c9",
+      "name": "Insert User",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1392,
+        -1408
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "user_assigned"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "={{ $('Extract Statsig').item.json.group }}"
+            }
+          ]
+        }
+      },
+      "id": "f26e3c35-f1d9-4574-ad03-429e8508e22a",
+      "name": "Log Assignment Event",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -1408
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://statsigapi.net/v1/log_event",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "STATSIG-API-KEY",
+              "value": "secret-zS7Nlm0jZ8jBxIENW8NwnPIChVm2tRGtkkHE8NWXyLK"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"user\": { \"userID\": String($('Extract User').item.json.user_id) }, \"events\": [ { \"eventName\": \"user_assigned\", \"value\": $('Extract Statsig').item.json.group } ] } }}",
+        "options": {}
+      },
+      "id": "1beb447c-5522-4a74-a0fa-79a711c603e5",
+      "name": "Statsig Log Assignment",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -992,
+        -1408
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c2",
+              "leftValue": "={{ $('Extract Statsig').item.json.group }}",
+              "rightValue": "control",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "dbdcfeca-ec87-40dd-9b31-ab66071f4a26",
+      "name": "New: Control or Test?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -800,
+        -1408
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Welcome to CalorAI! 🥗\n\nThis chat will now serve as you daily meals logging.\nYou can log your meals anytime followed by what you ate.\n\nStay consistent and I'll help you track your nutrition!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "4212b698-1fc0-4561-b567-02c36ad8ee89",
+      "name": "Send Control Welcome",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        -1568
+      ],
+      "webhookId": "caed0fc0-395a-4417-8095-60cb60c5e249",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "control_start"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "control"
+            }
+          ]
+        }
+      },
+      "id": "9b09b6ba-b0de-4d40-925a-b377ad9a321c",
+      "name": "Log control_start",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -1568
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Welcome to CalorAI! 🥗\n\nI'll help you track your meals and hit your health goals. Let's set you up in 3 quick steps.\n\n*Step 1 of 3:* What did you have for breakfast today? ☀️\n_(Type it below, or send 'skip' to move on)_",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "5e4f9de5-3791-44da-a33a-a96a53b46e50",
+      "name": "Send Onboarding Step 1",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -560,
+        -1392
+      ],
+      "webhookId": "22bdb9ca-9451-42c4-8e9e-5aa4da8ea19d",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract User').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "onboarding_step",
+              "fieldValue": "1"
+            }
+          ]
+        }
+      },
+      "id": "552c50ea-68fc-4d9f-b50c-87f3632ddcb9",
+      "name": "Set Step 1",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -368,
+        -1392
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "onboarding_step_1_sent"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "test"
+            }
+          ]
+        }
+      },
+      "id": "a8ccc9d6-f7e1-4999-941b-4ff43644fb7f",
+      "name": "Log step_1_sent",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -160,
+        -1392
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "users",
+        "limit": 1,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract User').item.json.user_id }}"
+            }
+          ]
+        }
+      },
+      "id": "31979964-e0e7-4d65-b140-cb77759fa237",
+      "name": "Get User Details",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1792,
+        -912
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c3",
+              "leftValue": "={{ $json.group }}",
+              "rightValue": "control",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2ca032a5-36a6-4aa2-bc0f-0d577823caed",
+      "name": "Existing: Control or Test?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -1600,
+        -912
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Welcome back to CalorAI! 👋\n\nType /log to record a new meal anytime.",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "69de7ee4-5a0a-44e2-a496-da6ac2893cd1",
+      "name": "Send Welcome Back Control",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -1392,
+        -1088
+      ],
+      "webhookId": "cbf343c4-712d-4a8e-a689-ad7908369237",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "returning_user"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "control"
+            }
+          ]
+        }
+      },
+      "id": "e08037d3-e446-4940-9368-f3060b564c45",
+      "name": "Log returning_control",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -1200,
+        -1088
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "sw1",
+                    "leftValue": "={{ $json.onboarding_step }}",
+                    "rightValue": 1,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Step 1 Reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "sw2",
+                    "leftValue": "={{ $json.onboarding_step }}",
+                    "rightValue": 2,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Step 2 Reply"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "sw3",
+                    "leftValue": "={{ $json.onboarding_step }}",
+                    "rightValue": 3,
+                    "operator": {
+                      "type": "number",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Step 3 Reply"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "05e4384c-c5fd-4dcd-af61-90f0f88ef576",
+      "name": "Route by Onboarding Step",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -1392,
+        -800
+      ]
+    },
+    {
+      "parameters": {
+        "tableId": "messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $('Extract User').item.json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "b69d1057-462a-4c9e-b980-c448e6756a15",
+      "name": "Store Breakfast Answer",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -800
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Got it! 🙌\n\n*Step 2 of 3:* What is your main health goal?\n_(e.g. weight loss, muscle gain, eat healthier, more energy)_",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "16e94530-e2da-4c19-ba40-299a6232c939",
+      "name": "Send Onboarding Step 2",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        -800
+      ],
+      "webhookId": "ec369f45-e3aa-498a-a98b-bad0b373c71a",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract User').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "onboarding_step",
+              "fieldValue": "2"
+            }
+          ]
+        }
+      },
+      "id": "a17d6f18-aeae-49d7-bb2e-382463db61ac",
+      "name": "Set Step 2",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -800
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "onboarding_step_2_sent"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "={{ $('Extract User').item.json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "a47f6dc3-c7f9-41ed-ad6d-e33575ed0e63",
+      "name": "Log step_2_sent",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -800
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $('Extract User').item.json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "b1306559-4a55-4425-963a-3fe0a5cbf44b",
+      "name": "Store Goal Answer",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -592
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Love it! 💪\n\n*Step 3 of 3:* How many meals do you typically eat per day?\n_(e.g. 3, 4, 5 — include snacks if you like)_",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "aa86caf4-8899-4230-9732-4247294178fe",
+      "name": "Send Onboarding Step 3",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        -592
+      ],
+      "webhookId": "bc31e161-7757-4f74-9d53-ee0282901ab8",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract User').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "onboarding_step",
+              "fieldValue": "3"
+            }
+          ]
+        }
+      },
+      "id": "db5217a9-69ff-4801-8c24-8f0f98cafa10",
+      "name": "Set Step 3",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -592
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "onboarding_step_3_sent"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "={{ $('Extract User').item.json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "2f4e9044-b90c-4ca2-8731-474084fd5183",
+      "name": "Log step_3_sent",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -592
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "messages",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "message",
+              "fieldValue": "={{ $('Extract User').item.json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "aba07be5-1bab-4ee0-9525-ebcc105e4bc1",
+      "name": "Store Final Answer",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        -384
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "🎉 You're all set!\n\nWelcome to CalorAI! 🥗\n\nThis chat will now serve as you daily meals logging.\nFrom now on just tell me what you ate - any time, any meal and I'll log it for you.\n\nStay consistent and I'll help you track your nutrition!\n\n*Try it now:* What's the next meal you're having?",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "8a33e6a7-f888-40ea-bb4f-790675cda24b",
+      "name": "Send Onboarding Complete",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -736,
+        -384
+      ],
+      "webhookId": "465776ba-a8ab-47a6-a042-0bf7f5ad0d9f",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "tableId": "users",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "user_id",
+              "condition": "eq",
+              "keyValue": "={{ $('Extract User').item.json.user_id }}"
+            }
+          ]
+        },
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "onboarding_step",
+              "fieldValue": "4"
+            }
+          ]
+        }
+      },
+      "id": "dbba8836-fc81-4138-ac8d-124f6f4bacc6",
+      "name": "Set Step Complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -544,
+        -384
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "onboarding_complete"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "test"
+            }
+          ]
+        }
+      },
+      "id": "aba151ba-a589-4ac5-a118-afafec1c7995",
+      "name": "Log onboarding_complete",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -336,
+        -384
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Extract User').item.json.chat_id }}",
+        "text": "Welcome back! 👋 Keep logging your meals — consistency is everything. Just tell me what you ate!",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "cfa6e083-be35-4ba6-a8ae-5496b4b38d99",
+      "name": "Send Welcome Back Test",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -944,
+        -192
+      ],
+      "webhookId": "47bae012-330d-4261-9dbd-326316379d11",
+      "credentials": {
+        "telegramApi": {
+          "id": "sFPtQPiJszd9tcD8",
+          "name": "SK_Invoice_Bot"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "tableId": "events",
+        "fieldsUi": {
+          "fieldValues": [
+            {
+              "fieldId": "user_id",
+              "fieldValue": "={{ $('Extract User').item.json.user_id }}"
+            },
+            {
+              "fieldId": "event_name",
+              "fieldValue": "returning_user"
+            },
+            {
+              "fieldId": "value",
+              "fieldValue": "test"
+            }
+          ]
+        }
+      },
+      "id": "4db65abe-0967-4bfa-9898-b1fc8f4ff93e",
+      "name": "Log returning_test",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -736,
+        -192
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Extract User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract User": {
+      "main": [
+        [
+          {
+            "node": "Check User Exists",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check User Exists": {
+      "main": [
+        [
+          {
+            "node": "New User?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New User?": {
+      "main": [
+        [
+          {
+            "node": "Statsig Assign",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get User Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Statsig Assign": {
+      "main": [
+        [
+          {
+            "node": "Extract Statsig",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Statsig": {
+      "main": [
+        [
+          {
+            "node": "Insert User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Insert User": {
+      "main": [
+        [
+          {
+            "node": "Log Assignment Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Assignment Event": {
+      "main": [
+        [
+          {
+            "node": "Statsig Log Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Statsig Log Assignment": {
+      "main": [
+        [
+          {
+            "node": "New: Control or Test?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "New: Control or Test?": {
+      "main": [
+        [
+          {
+            "node": "Send Control Welcome",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Onboarding Step 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Control Welcome": {
+      "main": [
+        [
+          {
+            "node": "Log control_start",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Onboarding Step 1": {
+      "main": [
+        [
+          {
+            "node": "Set Step 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Step 1": {
+      "main": [
+        [
+          {
+            "node": "Log step_1_sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Details": {
+      "main": [
+        [
+          {
+            "node": "Existing: Control or Test?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Existing: Control or Test?": {
+      "main": [
+        [
+          {
+            "node": "Send Welcome Back Control",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Route by Onboarding Step",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Back Control": {
+      "main": [
+        [
+          {
+            "node": "Log returning_control",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route by Onboarding Step": {
+      "main": [
+        [
+          {
+            "node": "Store Breakfast Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Goal Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Store Final Answer",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Welcome Back Test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Breakfast Answer": {
+      "main": [
+        [
+          {
+            "node": "Send Onboarding Step 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Onboarding Step 2": {
+      "main": [
+        [
+          {
+            "node": "Set Step 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Step 2": {
+      "main": [
+        [
+          {
+            "node": "Log step_2_sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Goal Answer": {
+      "main": [
+        [
+          {
+            "node": "Send Onboarding Step 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Onboarding Step 3": {
+      "main": [
+        [
+          {
+            "node": "Set Step 3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Step 3": {
+      "main": [
+        [
+          {
+            "node": "Log step_3_sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Store Final Answer": {
+      "main": [
+        [
+          {
+            "node": "Send Onboarding Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Onboarding Complete": {
+      "main": [
+        [
+          {
+            "node": "Set Step Complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Step Complete": {
+      "main": [
+        [
+          {
+            "node": "Log onboarding_complete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Welcome Back Test": {
+      "main": [
+        [
+          {
+            "node": "Log returning_test",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "d46e7b13-823a-426b-b23f-9b5d1d19f024",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00e2d86f18476fa48a0bbe70e4f34123227f25798f2099883f45d509f13b7aa9"
+  },
+  "id": "9xEif7xpJhQsdez4",
+  "tags": []
+}
