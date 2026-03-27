@@ -1,0 +1,100 @@
+{
+  "name": "MealTracker – Daily Reminder Push (8 PM)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 20 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-960, -80],
+      "id": "sched-reminder-trigger",
+      "name": "Every Day at 8 PM"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "push_tokens",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [-720, -80],
+      "id": "get-push-tokens-reminder",
+      "name": "Get All Push Tokens",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build the Expo push notification batch payload\nconst tokens = $input.all().map(item => item.json.token).filter(Boolean);\n\nif (tokens.length === 0) {\n  return [{ json: { skipped: true, reason: 'No push tokens found' } }];\n}\n\nconst messages = tokens.map(token => ({\n  to: token,\n  title: '🍽 Time to log your meals!',\n  body: \"Don't forget to track everything you ate today. Tap to open Meal Tracker.\",\n  data: { type: 'daily_reminder' },\n  sound: 'default',\n  priority: 'high',\n  channelId: 'meal-reminders'\n}));\n\nreturn [{ json: { messages } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-480, -80],
+      "id": "build-reminder-payload",
+      "name": "Build Reminder Payload"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.messages) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-240, -80],
+      "id": "send-reminder-push",
+      "name": "Send Reminder via Expo Push API"
+    }
+  ],
+  "connections": {
+    "Every Day at 8 PM": {
+      "main": [[{ "node": "Get All Push Tokens", "type": "main", "index": 0 }]]
+    },
+    "Get All Push Tokens": {
+      "main": [[{ "node": "Build Reminder Payload", "type": "main", "index": 0 }]]
+    },
+    "Build Reminder Payload": {
+      "main": [[{ "node": "Send Reminder via Expo Push API", "type": "main", "index": 0 }]]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true
+  }
+}

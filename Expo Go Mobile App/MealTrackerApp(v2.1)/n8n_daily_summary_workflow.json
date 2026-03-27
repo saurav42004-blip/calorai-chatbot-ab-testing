@@ -1,0 +1,203 @@
+{
+  "name": "MealTracker – Daily Summary Push (9 PM)",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 21 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1072,
+        416
+      ],
+      "id": "7dfcc9ac-5000-4456-93c7-9645be3f0b96",
+      "name": "Every Day at 9 PM"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "push_tokens",
+        "returnAll": true
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        416
+      ],
+      "id": "8911902f-483a-4a20-9b49-7ddd3ef854d3",
+      "name": "Get All Push Tokens",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "tableId": "meals",
+        "returnAll": true,
+        "matchType": "allFilters",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "date",
+              "condition": "eq",
+              "keyValue": "={{ $now.toFormat('yyyy-MM-dd') }}"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [
+        -832,
+        576
+      ],
+      "id": "376272f7-0d7d-47a6-b417-1de2eb50dce9",
+      "name": "Get Today's Meals",
+      "credentials": {
+        "supabaseApi": {
+          "id": "cACZflxgLpoSIvto",
+          "name": "SK Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Merge push tokens + today's meals and build per-user summary notifications\nconst tokenItems  = $('Get All Push Tokens').all();\nconst mealItems   = $('Get Today\\'s Meals').all();\n\nif (tokenItems.length === 0) {\n  return [{ json: { skipped: true, reason: 'No push tokens' } }];\n}\n\n// Group meals by user_id\nconst mealsByUser = {};\nfor (const item of mealItems) {\n  const { user_id, meal_type } = item.json;\n  if (!mealsByUser[user_id]) mealsByUser[user_id] = [];\n  mealsByUser[user_id].push(meal_type?.toLowerCase() ?? 'unknown');\n}\n\n// Emoji map for meal types\nconst EMOJI = { breakfast: '🌅', lunch: '☀️', snack: '🍎', dinner: '🌙' };\nconst cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);\n\n// Build one notification per user who has a push token\nconst messages = tokenItems.map(item => {\n  const { user_id, token } = item.json;\n  const types = mealsByUser[user_id] ?? [];\n  const count = types.length;\n\n  const title = '📊 Daily Meal Summary';\n  let body;\n\n  if (count === 0) {\n    body = \"You haven't logged any meals today. Start fresh tomorrow! 💪\";\n  } else {\n    const typeLines = [...new Set(types)]\n      .map(t => `  ${EMOJI[t] ?? '🍽'} ${cap(t)}`)\n      .join('\\n');\n    body = `You logged ${count} meal${count !== 1 ? 's' : ''} today:\\n${typeLines}`;\n  }\n\n  return {\n    to: token,\n    title,\n    body,\n    data: { type: 'daily_summary', mealCount: count },\n    sound: 'default',\n    channelId: 'meal-summary'\n  };\n}).filter(m => m.to);\n\nreturn [{ json: { messages } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -384,
+        512
+      ],
+      "id": "4a947f91-8859-460a-8f20-f22e0126db03",
+      "name": "Build Per-User Summary"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://exp.host/--/api/v2/push/send",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept",
+              "value": "application/json"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.messages) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -160,
+        512
+      ],
+      "id": "f4913ea1-17f2-4c7a-b8e1-0f32fbb36399",
+      "name": "Send Summary via Expo Push API"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -576,
+        512
+      ],
+      "id": "dcedd284-ee39-4e2c-920a-cb5a84a5b34a",
+      "name": "Merge"
+    }
+  ],
+  "connections": {
+    "Every Day at 9 PM": {
+      "main": [
+        [
+          {
+            "node": "Get All Push Tokens",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Today's Meals",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get All Push Tokens": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Today's Meals": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Build Per-User Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Summary via Expo Push API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Build Per-User Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "00e2d86f18476fa48a0bbe70e4f34123227f25798f2099883f45d509f13b7aa9"
+  }
+}
