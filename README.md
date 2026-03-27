@@ -1,4 +1,4 @@
-# CalorAI — Telegram Chatbot & A/B Testing
+# CalorAI - Telegram Chatbot & A/B Testing
 
 A full-stack health chatbot system built on Telegram, n8n, and Supabase. The project includes an A/B test experiment with Statsig, an AI-powered meal tracking chatbot, a React Native mobile app, real-time sync with push notifications, and an analytics dashboard.
 
@@ -196,7 +196,7 @@ create table meals (
 
 ### 2 · Telegram Bots
 
-Create two bots via [@BotFather](https://t.me/BotFather) — one for the A/B test workflow and one for the health chatbot. Set the webhook for each:
+Create two bots via [@BotFather](https://t.me/BotFather) - one for the A/B test workflow and one for the health chatbot. Set the webhook for each:
 
 ```
 https://api.telegram.org/bot<TOKEN>/setWebhook?url=<YOUR_N8N_WEBHOOK_URL>
@@ -223,11 +223,11 @@ Scan the QR code with the Expo Go app on your device. Make sure `.env` is config
 
 ## Assumptions & Trade-offs
 
-- **user_id = Telegram chat.id** — Used the Telegram `chat.id` as the primary user identifier across all tables and tools. This is consistent and requires no auth layer, but means one Supabase row per Telegram chat (not per Telegram account, which would differ in group chats).
-- **Statsig implicit gate read** — The A/B test workflow reads `Object.values(feature_gates)[0]` rather than a named gate. This works as long as only one gate is active in the Statsig project.
-- **No command parser in A/B bot** — Every message triggers the entry flow. A `/log` or `/start` command router was out of scope for the A/B test workflow; the health chatbot handles this via AI intent detection instead.
-- **Sample data in dashboard** — The analytics dashboard renders realistic mock data aligned to the schema. Wiring it to live Supabase requires adding `fetch()` calls with the project's anon key (documented in the dashboard README).
-- **Chat memory window set to 8** — The Postgres-backed chat memory in the health chatbot retains the last 8 messages per user. Sufficient for meal operations but would need tuning for longer conversational flows.
+- **user_id = Telegram chat.id** - Used the Telegram `chat.id` as the primary user identifier across all tables and tools. This is consistent and requires no auth layer, but means one Supabase row per Telegram chat (not per Telegram account, which would differ in group chats).
+- **Statsig implicit gate read** - The A/B test workflow reads `Object.values(feature_gates)[0]` rather than a named gate. This works as long as only one gate is active in the Statsig project.
+- **No command parser in A/B bot** - Every message triggers the entry flow. A `/log` or `/start` command router was out of scope for the A/B test workflow; the health chatbot handles this via AI intent detection instead.
+- **Sample data in dashboard** - The analytics dashboard renders realistic mock data aligned to the schema. Wiring it to live Supabase requires adding `fetch()` calls with the project's anon key (documented in the dashboard README).
+- **Chat memory window set to 8** - The Postgres-backed chat memory in the health chatbot retains the last 8 messages per user. Sufficient for meal operations but would need tuning for longer conversational flows.
 
 ---
 
