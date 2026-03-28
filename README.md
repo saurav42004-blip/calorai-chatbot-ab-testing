@@ -146,8 +146,6 @@ For n8n, configure the following credentials inside the n8n UI:
 | OpenAI API | Health chatbot (GPT-4.1-mini) |
 | Statsig API key (in HTTP Request headers) | A/B test workflow |
 
-> ⚠️ Rotate the Statsig API key before making the repository public.
-
 ---
 
 ## Setup Instructions
